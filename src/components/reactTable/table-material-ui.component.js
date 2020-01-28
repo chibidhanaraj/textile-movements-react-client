@@ -5,6 +5,8 @@ import { withStyles } from '@material-ui/core/styles';
 import Paper from '@material-ui/core/Paper';
 import axios from 'axios';
 import * as JsSearch from "js-search";
+import "bootstrap/dist/css/bootstrap.min.css";
+import loader from './spinner.css'
 
 const styles = theme => ({
     flexContainer: {
@@ -27,7 +29,7 @@ const styles = theme => ({
     oddRow: {
         background: '#ddd'
     },
-      
+
     headerRow: {
         background: '#ddd'
     }
@@ -57,29 +59,32 @@ export default class MaterialTable extends Component {
             search: [],
             searchResults: [],
             searchQuery: "",
+            isLoading: false
         };
         this._rowClassName = this._rowClassName.bind(this)
-      }
-    
-    
-      componentDidMount() {
-        axios.get('https://textile-movements-backend.herokuapp.com/api/getlist')
-          .then(response => {
-            console.log(response)
-            const shippingJsonData = response.data;
-            this.setState({
-              shippingJsonData
-            });
-            this.buildSearch()
-          })
-          .catch(err => {
-            console.log("====================================")
-            console.log(`Something bad happened while fetching the data\n${err}`)
-            console.log("====================================")
-          })
-      }
+    }
 
-      buildSearch = () => {
+
+    componentDidMount() {
+        this.setState({ isLoading: true })
+        axios.get('https://textile-movements-backend.herokuapp.com/api/getlist')
+            .then(response => {
+                const shippingJsonData = response.data;
+                this.setState({
+                    shippingJsonData
+                });
+                this.buildSearch();
+                this.setState({ isLoading: false })
+            })
+            .catch(err => {
+                console.log("====================================")
+                console.log(`Something bad happened while fetching the data\n${err}`)
+                console.log("====================================")
+                this.setState({ isLoading: false })
+            })
+    }
+
+    buildSearch = () => {
         const { shippingJsonData } = this.state
         const dataToSearch = new JsSearch.Search("_id")
         dataToSearch.indexStrategy = new JsSearch.PrefixIndexStrategy()
@@ -87,48 +92,54 @@ export default class MaterialTable extends Component {
         dataToSearch.searchIndex = new JsSearch.TfIdfSearchIndex("_id")
 
         dataToSearch.addIndex("shipperName")
-        dataToSearch.addIndex("importerName") 
-        dataToSearch.addIndex("country") 
-        dataToSearch.addIndex("destination") 
-        dataToSearch.addIndex("country") 
-        dataToSearch.addDocuments(shippingJsonData) 
-        this.setState({ search: dataToSearch})
-      }
+        dataToSearch.addIndex("importerName")
+        dataToSearch.addIndex("country")
+        dataToSearch.addIndex("destination")
+        dataToSearch.addIndex("country")
+        dataToSearch.addDocuments(shippingJsonData)
+        this.setState({ search: dataToSearch })
+    }
 
-      searchData = e => {
+    searchData = e => {
         const { search } = this.state
         const queryResult = search.search(e.target.value)
         this.setState({ searchQuery: e.target.value, searchResults: queryResult })
-      }
+    }
 
-      handleSubmit = e => {
+    handleSubmit = e => {
         e.preventDefault()
-      }
+    }
 
-      _rowClassName({index}) {
+    _rowClassName({ index }) {
         if (index < 0) {
-          return styles.headerRow;
+            return styles.headerRow;
         } else {
-          return index % 2 === 0 ? styles.evenRow : styles.oddRow;
+            return index % 2 === 0 ? styles.evenRow : styles.oddRow;
         }
-      }
-      
+    }
+    
     render() {
-        const { shippingJsonData, searchResults, searchQuery } = this.state;
+        const { shippingJsonData, searchResults, searchQuery, isLoading } = this.state;
         const queryResults = searchQuery === "" ? shippingJsonData : searchResults;
-        const rowGetter = ({index}) => queryResults[index];
+        const rowGetter = ({ index }) => queryResults[index];
         return (
             <div>
                 <form className="form-inline my-2 my-lg-0" onSubmit={this.handleSubmit}>
-                        <input
-                            id="Search"
-                            value={searchQuery}
-                            onChange={this.searchData}
-                            autoComplete="off"
-                            placeholder="Enter your search here"
-                            style={{ margin: "0 auto", width: "250px" }}
-                        />
+                    <input
+                        id="Search"
+                        value={searchQuery}
+                        onChange={this.searchData}
+                        autoComplete="off"
+                        placeholder="Enter your search here"
+                        style={{ margin: "0 auto", width: "250px" }}
+                    />
                 </form>
+                { isLoading && <div className="d-flex justify-content-center">
+                    <div className="spinner-border spinner" role="status">
+                        <span className="sr-only">Loading...</span>
+                    </div>
+                </div>  
+                }
                 <Paper style={{ height: '580px', flex: 1, width: '100%', margin: "20px 0" }}>
                     <VirtualizedTable
                         rowCount={queryResults.length}
